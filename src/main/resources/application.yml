@@ -1,0 +1,38 @@
+server:
+  port: 8080
+
+spring:
+  datasource:
+    # 本地开发数据库配置
+    url: jdbc:mysql://localhost:3306/english_learning?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai
+    username: root
+    password: 52120030823Sk.
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+token:
+  # 至少 32 位，HS256 才能正常签名
+  secret: english-backend-token-secret-2026-03-06
+  expire-hours: 24
+  header: Authorization
+
+mybatis-plus:
+  # XML mapper 路径（当前项目主要用 BaseMapper，后续写自定义 SQL 也能直接生效）
+  mapper-locations: classpath*:/mapper/**/*.xml
+  # 实体类别名包
+  type-aliases-package: com.suncan.english.entity
+  configuration:
+    # 开启下划线到驼峰映射：english_level -> englishLevel
+    map-underscore-to-camel-case: true
+    cache-enabled: false
+    # 开发期建议打开 SQL 日志，方便排查问题
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  global-config:
+    banner: false
+    db-config:
+      # 自增主键策略
+      id-type: auto
+
+knife4j:
+  enable: true
+  setting:
+    language: zh_cn

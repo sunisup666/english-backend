@@ -1,0 +1,57 @@
+# ==========================================
+# Java & Spring Boot 基础忽略
+# ==========================================
+# 编译后的 class 文件和目录
+*.class
+target/
+out/
+
+# 打包生成的文件
+*.jar
+*.war
+*.ear
+*.zip
+*.tar.gz
+*.rar
+
+# 运行时的日志文件
+*.log
+logs/
+
+# Java 虚拟机崩溃日志
+hs_err_pid*
+replay_pid*
+
+# ==========================================
+# 开发工具缓存与配置 (IDEA, Eclipse, VSCode)
+# ==========================================
+# IntelliJ IDEA
+.idea/
+*.iws
+*.iml
+*.ipr
+
+# Eclipse
+.classpath
+.project
+.settings/
+.apt_generated/
+.factorypath
+.springBeans
+
+# VS Code
+.vscode/
+
+# ==========================================
+# 操作系统自动生成的文件
+# ==========================================
+# Mac OS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
