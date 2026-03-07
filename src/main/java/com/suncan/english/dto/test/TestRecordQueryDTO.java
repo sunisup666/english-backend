@@ -25,8 +25,8 @@ public class TestRecordQueryDTO {
     @Schema(description = "等级结果", example = "中级")
     private String levelResult;
 
-    @Schema(description = "题目类型（预留）", example = "listening_choice")
-    private String questionType;
+    @Schema(description = "题目类型：1词汇单选 2语法填空 3听力选择 4口语主观", example = "3")
+    private Integer questionType;
 
     @DateTimeFormat(pattern = "yyyy-MM-dd")
     @Schema(description = "开始日期", example = "2026-03-01")
@@ -36,4 +36,3 @@ public class TestRecordQueryDTO {
     @Schema(description = "结束日期", example = "2026-03-31")
     private LocalDate endDate;
 }
-

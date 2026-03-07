@@ -7,25 +7,11 @@ import java.util.List;
 
 /**
  * 测试详情中的单题作答明细。
+ * 继承题目公共字段，再补充“用户答案、标准答案、得分”等详情字段。
  */
 @Data
 @Schema(description = "单题作答明细")
-public class QuestionAnswerDetailVO {
-
-    @Schema(description = "题目ID", example = "1001")
-    private Long questionId;
-
-    @Schema(description = "题目类型", example = "vocabulary_choice")
-    private String questionType;
-
-    @Schema(description = "题目标题")
-    private String title;
-
-    @Schema(description = "题目内容")
-    private String content;
-
-    @Schema(description = "题目音频地址")
-    private String audioUrl;
+public class QuestionAnswerDetailVO extends BaseQuestionVO {
 
     @Schema(description = "用户客观题答案", example = "A")
     private String userAnswer;
@@ -36,7 +22,7 @@ public class QuestionAnswerDetailVO {
     @Schema(description = "用户语音答案地址")
     private String audioAnswerUrl;
 
-    @Schema(description = "是否正确：1-正确，0-错误", example = "1")
+    @Schema(description = "是否正确：1正确 0错误", example = "1")
     private Integer isCorrect;
 
     @Schema(description = "本题得分", example = "5")

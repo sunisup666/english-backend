@@ -117,6 +117,16 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
                 .update();
     }
 
+    @Override
+    public void updateEnglishLevel(Long userId, String englishLevel) {
+        String level = normalizeRequired(englishLevel, "鑻辫绛夌骇涓嶈兘涓虹┖");
+        this.lambdaUpdate()
+                .eq(User::getId, userId)
+                .set(User::getEnglishLevel, level)
+                .set(User::getUpdateTime, LocalDateTime.now())
+                .update();
+    }
+
     private String normalizeRequired(String value, String message) {
         if (value == null) {
             throw new BusinessException(message);

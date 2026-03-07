@@ -1,31 +1,21 @@
 package com.suncan.english.vo.test;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.util.List;
 
 /**
- * 题目返回对象。
+ * 查询题目返回对象。
+ * 继承题目公共字段，只保留当前场景特有字段。
  */
 @Data
+@AllArgsConstructor
+@NoArgsConstructor
 @Schema(description = "题目信息")
-public class QuestionVO {
-
-    @Schema(description = "题目ID", example = "1001")
-    private Long questionId;
-
-    @Schema(description = "题目类型", example = "vocabulary_choice")
-    private String questionType;
-
-    @Schema(description = "题目标题")
-    private String title;
-
-    @Schema(description = "题目内容")
-    private String content;
-
-    @Schema(description = "题目音频地址")
-    private String audioUrl;
+public class QuestionVO extends BaseQuestionVO {
 
     @Schema(description = "题目分值", example = "5")
     private Integer score;

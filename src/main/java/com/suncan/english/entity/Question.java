@@ -22,7 +22,10 @@ public class Question {
     private Long paperId;
 
     @TableField("question_type")
-    private String questionType;
+    private Integer questionType;
+
+    @TableField("scene_type")
+    private Integer sceneType;
 
     @TableField("title")
     private String title;

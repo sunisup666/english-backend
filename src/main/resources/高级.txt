@@ -1,0 +1,86 @@
+{
+  "paperId": 1,
+  "startTime": "2026-03-07T10:36:31",
+  "answers": [
+    {
+      "questionId": 1,
+      "answer": "B"
+    },
+    {
+      "questionId": 2,
+      "answer": "B"
+    },
+    {
+      "questionId": 3,
+      "answer": "B"
+    },
+    {
+      "questionId": 4,
+      "answer": "A"
+    },
+    {
+      "questionId": 5,
+      "answer": "C"
+    },
+    {
+      "questionId": 6,
+      "answer": "A"
+    },
+    {
+      "questionId": 7,
+      "answer": "B"
+    },
+    {
+      "questionId": 8,
+      "answer": "C"
+    },
+    {
+      "questionId": 9,
+      "answer": "A"
+    },
+    {
+      "questionId": 10,
+      "answer": "C"
+    },
+    {
+      "questionId": 11,
+      "answer": "C"
+    },
+    {
+      "questionId": 12,
+      "answer": "B"
+    },
+    {
+      "questionId": 13,
+      "answer": "B"
+    },
+    {
+      "questionId": 14,
+      "answer": "B"
+    },
+    {
+      "questionId": 15,
+      "answer": "C"
+    },
+    {
+      "questionId": 16,
+      "answer": "B"
+    },
+    {
+      "questionId": 17,
+      "answer": "B"
+    },
+    {
+      "questionId": 18,
+      "answer": "B"
+    },
+    {
+      "questionId": 19,
+      "answer": "A"
+    },
+    {
+      "questionId": 20,
+      "answer": "A"
+    }
+  ]
+}

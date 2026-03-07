@@ -21,4 +21,9 @@ public interface UserService extends IService<User> {
     void updateUser(Long userId, UpdateUserDTO dto);
 
     void updatePassword(Long userId, UpdatePasswordDTO dto);
+
+    /**
+     * 同步更新用户英语等级。
+     */
+    void updateEnglishLevel(Long userId, String englishLevel);
 }
