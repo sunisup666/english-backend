@@ -13,13 +13,11 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    /** 业务异常 */
     @ExceptionHandler(BusinessException.class)
     public Result<Void> handleBusinessException(BusinessException e) {
         return Result.fail(e.getMessage());
     }
 
-    /** @Valid 参数校验异常 */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public Result<Void> handleMethodArgumentNotValidException(MethodArgumentNotValidException e) {
         String message = e.getBindingResult().getFieldError() != null
@@ -28,7 +26,6 @@ public class GlobalExceptionHandler {
         return Result.fail(message);
     }
 
-    /** 表单绑定异常 */
     @ExceptionHandler(BindException.class)
     public Result<Void> handleBindException(BindException e) {
         String message = e.getBindingResult().getFieldError() != null
@@ -37,15 +34,13 @@ public class GlobalExceptionHandler {
         return Result.fail(message);
     }
 
-    /** 路径参数/请求参数校验异常 */
     @ExceptionHandler(ConstraintViolationException.class)
     public Result<Void> handleConstraintViolationException(ConstraintViolationException e) {
         return Result.fail(e.getMessage());
     }
 
-    /** 兜底异常 */
     @ExceptionHandler(Exception.class)
     public Result<Void> handleException(Exception e) {
-        return Result.fail("internal server error: " + e.getMessage());
+        return Result.fail("系统繁忙，请稍后重试");
     }
 }

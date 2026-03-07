@@ -6,7 +6,7 @@ spring:
     # 本地开发数据库配置
     url: jdbc:mysql://localhost:3306/english_learning?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai
     username: root
-    password: 52120030823Sk.
+    password: "52120030823Sk."
     driver-class-name: com.mysql.cj.jdbc.Driver
 
 token:
@@ -16,10 +16,10 @@ token:
   header: Authorization
 
 mybatis-plus:
-  # XML mapper 路径（当前项目主要用 BaseMapper，后续写自定义 SQL 也能直接生效）
+  # Mapper 接口扫描包路径
   mapper-locations: classpath*:/mapper/**/*.xml
-  # 实体类别名包
   type-aliases-package: com.suncan.english.entity
+  # 显式指定 Mapper 接口扫描包，确保 @Mapper 能被正确注册为 Spring Bean
   configuration:
     # 开启下划线到驼峰映射：english_level -> englishLevel
     map-underscore-to-camel-case: true

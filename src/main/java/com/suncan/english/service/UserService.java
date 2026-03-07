@@ -1,38 +1,24 @@
 package com.suncan.english.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
-import com.suncan.english.dto.LoginDTO;
-import com.suncan.english.dto.RegisterDTO;
-import com.suncan.english.dto.UpdatePasswordDTO;
-import com.suncan.english.dto.UpdateUserDTO;
+import com.suncan.english.dto.user.LoginDTO;
+import com.suncan.english.dto.user.RegisterDTO;
+import com.suncan.english.dto.user.UpdatePasswordDTO;
+import com.suncan.english.dto.user.UpdateUserDTO;
 import com.suncan.english.entity.User;
 
 /**
  * 用户业务接口。
  */
 public interface UserService extends IService<User> {
-    /**
-     * 用户注册。
-     */
+
     void register(RegisterDTO dto);
 
-    /**
-     * 用户登录，校验通过后返回 token。
-     */
     String login(LoginDTO dto);
 
-    /**
-     * 根据用户 ID 获取个人信息。
-     */
     User getUserInfo(Long userId);
 
-    /**
-     * 更新用户基础资料。
-     */
     void updateUser(Long userId, UpdateUserDTO dto);
 
-    /**
-     * 修改用户密码。
-     */
     void updatePassword(Long userId, UpdatePasswordDTO dto);
 }

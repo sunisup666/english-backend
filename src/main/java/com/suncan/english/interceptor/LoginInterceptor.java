@@ -1,6 +1,7 @@
 package com.suncan.english.interceptor;
 
 import com.suncan.english.config.TokenProperties;
+import com.suncan.english.context.UserContext;
 import com.suncan.english.exception.BusinessException;
 import com.suncan.english.util.TokenUtil;
 import jakarta.servlet.http.HttpServletRequest;
@@ -10,12 +11,10 @@ import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.HandlerInterceptor;
 
 /**
- * 登录拦截器：校验 token，并把当前用户 ID 放到 request 属性中。
+ * 登录拦截器：校验 token，并将当前用户写入 UserContext。
  */
 @Component
 public class LoginInterceptor implements HandlerInterceptor {
-
-    public static final String CURRENT_USER_ID = "currentUserId";
 
     private final TokenUtil tokenUtil;
     private final TokenProperties tokenProperties;
@@ -27,7 +26,9 @@ public class LoginInterceptor implements HandlerInterceptor {
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
-        // 不是 Controller 方法时直接放过
+        // 先清理一次，避免极端情况下线程复用带来脏数据
+        UserContext.clear();
+
         if (!(handler instanceof HandlerMethod)) {
             return true;
         }
@@ -37,13 +38,19 @@ public class LoginInterceptor implements HandlerInterceptor {
             throw new BusinessException("请先登录");
         }
 
-        // 兼容 Bearer xxx 的格式
+        // 兼容 Authorization: Bearer xxx
         if (token.startsWith("Bearer ")) {
             token = token.substring(7);
         }
 
         Long userId = tokenUtil.parseUserId(token);
-        request.setAttribute(CURRENT_USER_ID, userId);
+        UserContext.setUserId(userId);
         return true;
+    }
+
+    @Override
+    public void afterCompletion(HttpServletRequest request, HttpServletResponse response, Object handler, Exception ex) {
+        // 请求结束必须清理，避免线程池复用导致上下文串号
+        UserContext.clear();
     }
 }

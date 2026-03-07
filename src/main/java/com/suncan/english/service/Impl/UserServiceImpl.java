@@ -1,10 +1,10 @@
 package com.suncan.english.service.impl;
 
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.suncan.english.dto.LoginDTO;
-import com.suncan.english.dto.RegisterDTO;
-import com.suncan.english.dto.UpdatePasswordDTO;
-import com.suncan.english.dto.UpdateUserDTO;
+import com.suncan.english.dto.user.LoginDTO;
+import com.suncan.english.dto.user.RegisterDTO;
+import com.suncan.english.dto.user.UpdatePasswordDTO;
+import com.suncan.english.dto.user.UpdateUserDTO;
 import com.suncan.english.entity.User;
 import com.suncan.english.exception.BusinessException;
 import com.suncan.english.mapper.UserMapper;
@@ -17,7 +17,6 @@ import java.time.LocalDateTime;
 
 /**
  * 用户业务实现。
- * 这里主要使用 MP 的 lambdaQuery / lambdaUpdate，逻辑保持直观，方便答辩讲解。
  */
 @Service
 public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements UserService {
@@ -28,18 +27,10 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         this.tokenUtil = tokenUtil;
     }
 
-    /**
-     * 注册逻辑：
-     * 1. 处理用户名空白
-     * 2. 用 MP 链式查询做判重
-     * 3. 密码做 MD5 后落库
-     */
     @Override
     public void register(RegisterDTO dto) {
         String username = normalizeRequired(dto.getUsername(), "用户名不能为空");
-        long duplicateCount = this.lambdaQuery()
-                .eq(User::getUsername, username)
-                .count();
+        long duplicateCount = this.lambdaQuery().eq(User::getUsername, username).count();
         if (duplicateCount > 0) {
             throw new BusinessException("用户名已存在");
         }
@@ -57,20 +48,12 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         this.save(user);
     }
 
-    /**
-     * 登录逻辑：
-     * 1. 按用户名查用户
-     * 2. 校验 MD5 密码
-     * 3. 生成 token
-     */
     @Override
     public String login(LoginDTO dto) {
         String username = normalizeRequired(dto.getUsername(), "用户名不能为空");
-        User user = this.lambdaQuery()
-                .eq(User::getUsername, username)
-                .one();
+        User user = this.lambdaQuery().eq(User::getUsername, username).one();
         if (user == null) {
-            throw new BusinessException("用户不存在");
+            throw new BusinessException("用户名或密码错误");
         }
         if (!Md5Util.matches(dto.getPassword(), user.getPassword())) {
             throw new BusinessException("用户名或密码错误");
@@ -78,9 +61,6 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         return tokenUtil.createToken(user.getId(), user.getUsername());
     }
 
-    /**
-     * 查询个人信息，返回前隐藏密码字段。
-     */
     @Override
     public User getUserInfo(Long userId) {
         User user = this.getById(userId);
@@ -91,11 +71,6 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         return user;
     }
 
-    /**
-     * 修改个人信息：
-     * - 至少更新一个字段
-     * - 使用 MP 的 lambdaUpdate 按字段更新，避免整实体回写
-     */
     @Override
     public void updateUser(Long userId, UpdateUserDTO dto) {
         User user = this.getById(userId);
@@ -106,9 +81,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         String nickname = normalizeOptional(dto.getNickname());
         String email = normalizeOptional(dto.getEmail());
         String phone = normalizeOptional(dto.getPhone());
-
-        boolean changed = nickname != null || email != null || phone != null;
-        if (!changed) {
+        if (nickname == null && email == null && phone == null) {
             throw new BusinessException("至少传一个要更新的字段");
         }
 
@@ -121,12 +94,6 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
                 .update();
     }
 
-    /**
-     * 修改密码：
-     * - 先校验旧密码
-     * - 新旧密码不能相同
-     * - 使用 lambdaUpdate 更新密码和更新时间
-     */
     @Override
     public void updatePassword(Long userId, UpdatePasswordDTO dto) {
         User user = this.getById(userId);
