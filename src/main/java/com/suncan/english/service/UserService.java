@@ -1,5 +1,6 @@
 package com.suncan.english.service;
 
+import com.baomidou.mybatisplus.extension.service.IService;
 import com.suncan.english.dto.LoginDTO;
 import com.suncan.english.dto.RegisterDTO;
 import com.suncan.english.dto.UpdatePasswordDTO;
@@ -9,7 +10,7 @@ import com.suncan.english.entity.User;
 /**
  * 用户业务接口。
  */
-public interface UserService {
+public interface UserService extends IService<User> {
     /**
      * 用户注册。
      */
