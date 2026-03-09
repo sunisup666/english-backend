@@ -6,15 +6,15 @@ import lombok.Data;
 import java.util.List;
 
 /**
- * Record detail response object.
+ * 测试记录详情。
  */
 @Data
-@Schema(description = "Record detail")
+@Schema(description = "测试记录详情")
 public class TestRecordDetailVO extends TestRecordItemVO {
 
-    @Schema(description = "Total question count", example = "20")
+    @Schema(description = "题目总数", example = "20")
     private Integer totalCount;
 
-    @Schema(description = "Per-question detail list")
+    @Schema(description = "逐题作答详情")
     private List<QuestionAnswerDetailVO> questionAnswerList;
 }

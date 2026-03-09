@@ -10,6 +10,11 @@ import java.time.LocalDateTime;
 
 /**
  * 用户测试记录实体，对应 user_test_record 表。
+ *
+ * 说明：
+ * - levelResult 为测试计算后的等级编码（1初级 2中级 3高级）；
+ * - entity 只保存编码，不保存中文名；
+ * - 中文展示统一在 VO 组装阶段由枚举转换。
  */
 @Data
 @TableName("user_test_record")
@@ -30,8 +35,9 @@ public class UserTestRecord {
     @TableField("correct_count")
     private Integer correctCount;
 
+    /** 测试等级结果编码：1初级 2中级 3高级 */
     @TableField("level_result")
-    private String levelResult;
+    private Integer levelResult;
 
     @TableField("start_time")
     private LocalDateTime startTime;

@@ -1,7 +1,10 @@
 package com.suncan.english.service.Impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.suncan.english.constant.QuestionTypeConstant;
+import com.suncan.english.enums.EnglishLevelEnum;
+import com.suncan.english.enums.QuestionDifficultyEnum;
+import com.suncan.english.enums.QuestionTypeEnum;
+import com.suncan.english.enums.SceneTypeEnum;
 import com.suncan.english.dto.test.AnswerItemDTO;
 import com.suncan.english.dto.test.SubmitAnswerDTO;
 import com.suncan.english.dto.test.TestRecordQueryDTO;
@@ -20,6 +23,7 @@ import com.suncan.english.mapper.UserTestAnswerMapper;
 import com.suncan.english.mapper.UserTestRecordMapper;
 import com.suncan.english.service.TestService;
 import com.suncan.english.service.UserService;
+
 import com.suncan.english.vo.test.QuestionAnswerDetailVO;
 import com.suncan.english.vo.test.QuestionOptionVO;
 import com.suncan.english.vo.test.QuestionVO;
@@ -102,12 +106,17 @@ public class TestServiceImpl implements TestService {
             QuestionVO vo = new QuestionVO();
             vo.setQuestionId(question.getId());
             vo.setQuestionType(question.getQuestionType());
+            vo.setQuestionTypeName(QuestionTypeEnum.getNameByCode(question.getQuestionType()));
             vo.setSceneType(question.getSceneType());
+            vo.setSceneTypeName(SceneTypeEnum.getNameByCode(question.getSceneType()));
             vo.setTitle(question.getTitle());
             vo.setContent(question.getContent());
             vo.setAudioUrl(question.getAudioUrl());
             vo.setScore(relation != null && relation.getScore() != null ? relation.getScore() : question.getScore());
             vo.setDifficulty(question.getDifficulty());
+            QuestionDifficultyEnum difficultyEnum = QuestionDifficultyEnum.fromRaw(question.getDifficulty());
+            vo.setDifficultyCode(difficultyEnum == null ? null : difficultyEnum.getCode());
+            vo.setDifficultyName(QuestionDifficultyEnum.getNameByRaw(question.getDifficulty()));
             vo.setSortOrder(relation != null && relation.getSortOrder() != null ? relation.getSortOrder() : question.getSortOrder());
             if (isChoiceQuestion(question.getQuestionType())) {
                 vo.setOptions(toOptionVOList(optionMap.getOrDefault(question.getId(), Collections.emptyList())));
@@ -245,7 +254,9 @@ public class TestServiceImpl implements TestService {
             itemVO.setPaperName(paperNameMap.get(record.getPaperId()));
             itemVO.setTotalScore(record.getTotalScore());
             itemVO.setCorrectCount(record.getCorrectCount());
+            // 返回“编码 + 中文名”双字段，前端既能直接展示，也能按编码做逻辑处理。
             itemVO.setLevelResult(record.getLevelResult());
+            itemVO.setLevelResultName(EnglishLevelEnum.getNameByCode(record.getLevelResult()));
             itemVO.setStartTime(record.getStartTime());
             itemVO.setSubmitTime(record.getSubmitTime());
             itemVO.setDurationSeconds(record.getDurationSeconds());
@@ -315,7 +326,9 @@ public class TestServiceImpl implements TestService {
             QuestionAnswerDetailVO detailVO = new QuestionAnswerDetailVO();
             detailVO.setQuestionId(question.getId());
             detailVO.setQuestionType(question.getQuestionType());
+            detailVO.setQuestionTypeName(QuestionTypeEnum.getNameByCode(question.getQuestionType()));
             detailVO.setSceneType(question.getSceneType());
+            detailVO.setSceneTypeName(SceneTypeEnum.getNameByCode(question.getSceneType()));
             detailVO.setTitle(question.getTitle());
             detailVO.setContent(question.getContent());
             detailVO.setAudioUrl(question.getAudioUrl());
@@ -341,7 +354,9 @@ public class TestServiceImpl implements TestService {
         detailVO.setTotalScore(record.getTotalScore());
         detailVO.setCorrectCount(record.getCorrectCount());
         detailVO.setTotalCount(questionAnswerList.size());
+        // 详情页同样返回编码与中文名，避免前端重复做映射。
         detailVO.setLevelResult(record.getLevelResult());
+        detailVO.setLevelResultName(EnglishLevelEnum.getNameByCode(record.getLevelResult()));
         detailVO.setStartTime(record.getStartTime());
         detailVO.setSubmitTime(record.getSubmitTime());
         detailVO.setDurationSeconds(record.getDurationSeconds());
@@ -355,7 +370,7 @@ public class TestServiceImpl implements TestService {
         LambdaQueryWrapper<UserTestRecord> wrapper = new LambdaQueryWrapper<UserTestRecord>()
                 .eq(UserTestRecord::getUserId, userId)
                 .eq(queryDTO.getPaperId() != null, UserTestRecord::getPaperId, queryDTO.getPaperId())
-                .eq(hasText(queryDTO.getLevelResult()), UserTestRecord::getLevelResult, trimToNull(queryDTO.getLevelResult()))
+                .eq(queryDTO.getLevelResult() != null, UserTestRecord::getLevelResult, queryDTO.getLevelResult())
                 .in(filterRecordIds != null, UserTestRecord::getId, filterRecordIds);
 
         LocalDate startDate = queryDTO.getStartDate();
@@ -429,7 +444,7 @@ public class TestServiceImpl implements TestService {
         return result;
     }
 
-    // Smooth migration: prefer paper_question; fallback to question.paper_id only when relation table is empty.
+    // 兼容说明：优先使用 paper_question 关系表；若为空则回退到 question.paper_id（历史数据兼容）。
     private List<PaperQuestion> loadPaperQuestionRelationsWithCompat(Long paperId) {
         List<PaperQuestion> relationList = paperQuestionMapper.selectList(
                 new LambdaQueryWrapper<PaperQuestion>()
@@ -544,17 +559,15 @@ public class TestServiceImpl implements TestService {
     }
 
     private boolean isChoiceQuestion(Integer questionType) {
-        return questionType != null
-                && (questionType == QuestionTypeConstant.VOCABULARY_CHOICE
-                || questionType == QuestionTypeConstant.LISTENING_CHOICE);
+        return QuestionTypeEnum.isChoice(questionType);
     }
 
     private boolean isBlankQuestion(Integer questionType) {
-        return questionType != null && questionType == QuestionTypeConstant.GRAMMAR_CLOZE;
+        return QuestionTypeEnum.isBlank(questionType);
     }
 
     private boolean isSpeakingQuestion(Integer questionType) {
-        return questionType != null && questionType == QuestionTypeConstant.SPEAKING_SUBJECTIVE;
+        return QuestionTypeEnum.isSpeaking(questionType);
     }
 
     private String resolveUserAnswer(Integer questionType, AnswerItemDTO answerItem) {
@@ -596,14 +609,21 @@ public class TestServiceImpl implements TestService {
         return text.replace(" ", "").toUpperCase();
     }
 
-    private String resolveLevelResult(int totalScore) {
+    /**
+     * 根据测试得分计算等级编码。
+     *
+     * 说明：
+     * - 使用数字编码做业务判断，比字符串更稳定；
+     * - 中文展示统一在 VO 组装阶段通过工具类转换。
+     */
+    private Integer resolveLevelResult(int totalScore) {
         if (totalScore < 60) {
-            return "初级";
+            return EnglishLevelEnum.BEGINNER.getCode();
         }
         if (totalScore < 80) {
-            return "中级";
+            return EnglishLevelEnum.INTERMEDIATE.getCode();
         }
-        return "高级";
+        return EnglishLevelEnum.ADVANCED.getCode();
     }
 
     private int resolveDurationSeconds(LocalDateTime startTime, LocalDateTime submitTime) {
@@ -613,16 +633,8 @@ public class TestServiceImpl implements TestService {
         long seconds = Duration.between(startTime, submitTime).getSeconds();
         return (int) Math.max(seconds, 0);
     }
-
-    private boolean hasText(String value) {
-        return trimToNull(value) != null;
-    }
-
     private void validateQuestionType(Integer questionType) {
-        if (questionType == QuestionTypeConstant.VOCABULARY_CHOICE
-                || questionType == QuestionTypeConstant.GRAMMAR_CLOZE
-                || questionType == QuestionTypeConstant.LISTENING_CHOICE
-                || questionType == QuestionTypeConstant.SPEAKING_SUBJECTIVE) {
+        if (QuestionTypeEnum.fromCode(questionType) != null) {
             return;
         }
         throw new BusinessException("Invalid question type");
@@ -642,7 +654,9 @@ public class TestServiceImpl implements TestService {
         vo.setPaperId(record.getPaperId());
         vo.setTotalScore(record.getTotalScore());
         vo.setCorrectCount(record.getCorrectCount());
+        // 结果页统一返回编码和值名称，方便前端联调。
         vo.setLevelResult(record.getLevelResult());
+        vo.setLevelResultName(EnglishLevelEnum.getNameByCode(record.getLevelResult()));
         vo.setStartTime(record.getStartTime());
         vo.setSubmitTime(record.getSubmitTime());
         vo.setDurationSeconds(record.getDurationSeconds());

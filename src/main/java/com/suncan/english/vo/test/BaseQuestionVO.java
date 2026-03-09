@@ -4,26 +4,36 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
 /**
- * Base fields shared by question response objects.
+ * 题目返回基础字段。
+ *
+ * 说明：
+ * - questionType/sceneType 保留编码，便于前端逻辑判断；
+ * - questionTypeName/sceneTypeName 提供中文名，便于页面直接展示。
  */
 @Data
 public class BaseQuestionVO {
 
-    @Schema(description = "Question ID", example = "1001")
+    @Schema(description = "题目ID", example = "1001")
     private Long questionId;
 
-    @Schema(description = "Question type: 1-vocabulary choice, 2-grammar blank, 3-listening choice, 4-speaking subjective", example = "1")
+    @Schema(description = "题型编码", example = "1")
     private Integer questionType;
 
-    @Schema(description = "Scene type", example = "1")
+    @Schema(description = "题型名称", example = "词汇单选")
+    private String questionTypeName;
+
+    @Schema(description = "场景编码", example = "1")
     private Integer sceneType;
 
-    @Schema(description = "Question title")
+    @Schema(description = "场景名称", example = "通用")
+    private String sceneTypeName;
+
+    @Schema(description = "题目标题")
     private String title;
 
-    @Schema(description = "Question content")
+    @Schema(description = "题目内容")
     private String content;
 
-    @Schema(description = "Audio URL")
+    @Schema(description = "音频地址")
     private String audioUrl;
 }

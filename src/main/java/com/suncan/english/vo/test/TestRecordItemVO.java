@@ -4,12 +4,12 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
 /**
- * One record item in paged list.
+ * 测试记录分页列表单项。
  */
 @Data
-@Schema(description = "Record list item")
+@Schema(description = "测试记录列表项")
 public class TestRecordItemVO extends BaseRecordSummaryVO {
 
-    @Schema(description = "Paper name")
+    @Schema(description = "试卷名称")
     private String paperName;
 }

@@ -1,6 +1,7 @@
 package com.suncan.english.service.impl;
 
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.suncan.english.enums.EnglishLevelEnum;
 import com.suncan.english.dto.user.LoginDTO;
 import com.suncan.english.dto.user.RegisterDTO;
 import com.suncan.english.dto.user.UpdatePasswordDTO;
@@ -9,14 +10,21 @@ import com.suncan.english.entity.User;
 import com.suncan.english.exception.BusinessException;
 import com.suncan.english.mapper.UserMapper;
 import com.suncan.english.service.UserService;
+
 import com.suncan.english.util.Md5Util;
 import com.suncan.english.util.TokenUtil;
+import com.suncan.english.vo.user.UserInfoVO;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 
 /**
  * 用户业务实现。
+ *
+ * 设计说明：
+ * - 等级在数据库中只存数字编码（1/2/3）；
+ * - 展示给前端时再转换中文名称，避免业务判断依赖文案字符串；
+ * - entity 只做持久化映射，展示扩展信息放到 VO。
  */
 @Service
 public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements UserService {
@@ -42,7 +50,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         user.setNickname(normalizeOptional(dto.getNickname()));
         user.setEmail(normalizeOptional(dto.getEmail()));
         user.setPhone(normalizeOptional(dto.getPhone()));
-        user.setEnglishLevel("初级");
+        // 新用户默认初级：后续可由测试模块自动更新。
+        user.setEnglishLevel(EnglishLevelEnum.BEGINNER.getCode());
         user.setCreateTime(now);
         user.setUpdateTime(now);
         this.save(user);
@@ -62,13 +71,22 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     }
 
     @Override
-    public User getUserInfo(Long userId) {
+    public UserInfoVO getUserInfo(Long userId) {
         User user = this.getById(userId);
         if (user == null) {
             throw new BusinessException("用户不存在");
         }
-        user.setPassword(null);
-        return user;
+
+        // VO 组装：同时返回编码和值名称，前端展示更直观、联调更方便。
+        UserInfoVO vo = new UserInfoVO();
+        vo.setId(user.getId());
+        vo.setUsername(user.getUsername());
+        vo.setNickname(user.getNickname());
+        vo.setEmail(user.getEmail());
+        vo.setPhone(user.getPhone());
+        vo.setEnglishLevel(user.getEnglishLevel());
+        vo.setEnglishLevelName(EnglishLevelEnum.getNameByCode(user.getEnglishLevel()));
+        return vo;
     }
 
     @Override
@@ -118,11 +136,14 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     }
 
     @Override
-    public void updateEnglishLevel(Long userId, String englishLevel) {
-        String level = normalizeRequired(englishLevel, "鑻辫绛夌骇涓嶈兘涓虹┖");
+    public void updateEnglishLevel(Long userId, Integer englishLevel) {
+        // 统一做编码合法性校验，避免非法等级写入数据库。
+        if (!EnglishLevelEnum.containsCode(englishLevel)) {
+            throw new BusinessException("英语等级编码不合法");
+        }
         this.lambdaUpdate()
                 .eq(User::getId, userId)
-                .set(User::getEnglishLevel, level)
+                .set(User::getEnglishLevel, englishLevel)
                 .set(User::getUpdateTime, LocalDateTime.now())
                 .update();
     }

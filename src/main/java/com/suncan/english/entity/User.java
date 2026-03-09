@@ -10,12 +10,18 @@ import lombok.Data;
 import java.time.LocalDateTime;
 
 /**
- * 用户实体，对应数据库 user 表。
+ * 用户实体，对应 user 表。
+ *
+ * 说明：
+ * 1. 数据库存储 englishLevel 为 Integer 编码（1初级 2中级 3高级）；
+ * 2. 实体层保持 Integer，不直接改为枚举字段，减少 ORM 映射复杂度；
+ * 3. 业务语义增强和中文名称转换交给 service + enum/vo 层处理。
  */
 @Data
 @Schema(description = "用户信息")
 @TableName("`user`")
 public class User {
+
     @Schema(description = "主键ID", example = "1")
     @TableId(value = "id", type = IdType.AUTO)
     private Long id;
@@ -40,9 +46,9 @@ public class User {
     @TableField("phone")
     private String phone;
 
-    @Schema(description = "英语等级", example = "初级")
+    @Schema(description = "英语等级编码：1初级 2中级 3高级", example = "1")
     @TableField("english_level")
-    private String englishLevel;
+    private Integer englishLevel;
 
     @Schema(description = "创建时间")
     @TableField("create_time")
