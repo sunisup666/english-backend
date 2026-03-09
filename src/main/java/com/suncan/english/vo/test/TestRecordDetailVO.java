@@ -6,16 +6,15 @@ import lombok.Data;
 import java.util.List;
 
 /**
- * 测试记录详情。
- * 继承记录摘要字段，再追加总题数和逐题作答明细。
+ * Record detail response object.
  */
 @Data
-@Schema(description = "测试记录详情")
+@Schema(description = "Record detail")
 public class TestRecordDetailVO extends TestRecordItemVO {
 
-    @Schema(description = "总题数", example = "20")
+    @Schema(description = "Total question count", example = "20")
     private Integer totalCount;
 
-    @Schema(description = "逐题作答明细")
+    @Schema(description = "Per-question detail list")
     private List<QuestionAnswerDetailVO> questionAnswerList;
 }

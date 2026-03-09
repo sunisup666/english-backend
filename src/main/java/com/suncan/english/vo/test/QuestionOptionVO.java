@@ -4,18 +4,18 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
 /**
- * 题目选项返回对象。
+ * Question option response object.
  */
 @Data
-@Schema(description = "题目选项")
+@Schema(description = "Question option")
 public class QuestionOptionVO {
 
-    @Schema(description = "选项标识", example = "A")
+    @Schema(description = "Option label", example = "A")
     private String optionLabel;
 
-    @Schema(description = "选项内容", example = "I go to school by bus.")
+    @Schema(description = "Option content", example = "I go to school by bus.")
     private String optionContent;
 
-    @Schema(description = "选项排序", example = "1")
+    @Schema(description = "Sort order", example = "1")
     private Integer sortOrder;
 }

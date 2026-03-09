@@ -4,13 +4,12 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
 /**
- * 分页列表中的单条测试记录摘要。
- * 在通用记录字段基础上增加试卷名称。
+ * One record item in paged list.
  */
 @Data
-@Schema(description = "测试记录摘要")
+@Schema(description = "Record list item")
 public class TestRecordItemVO extends BaseRecordSummaryVO {
 
-    @Schema(description = "试卷名称")
+    @Schema(description = "Paper name")
     private String paperName;
 }

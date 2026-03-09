@@ -6,22 +6,21 @@ import lombok.Data;
 import java.util.List;
 
 /**
- * 测试记录分页结果。
+ * Paged record response object.
  */
 @Data
-@Schema(description = "测试记录分页结果")
+@Schema(description = "Record page")
 public class TestRecordPageVO {
 
-    @Schema(description = "当前页", example = "1")
+    @Schema(description = "Current page", example = "1")
     private Long current;
 
-    @Schema(description = "每页条数", example = "10")
+    @Schema(description = "Page size", example = "10")
     private Long size;
 
-    @Schema(description = "总条数", example = "35")
+    @Schema(description = "Total count", example = "35")
     private Long total;
 
-    @Schema(description = "记录列表")
+    @Schema(description = "Record list")
     private List<TestRecordItemVO> records;
 }
-

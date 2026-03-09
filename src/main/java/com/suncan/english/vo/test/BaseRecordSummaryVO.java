@@ -6,34 +6,32 @@ import lombok.Data;
 import java.time.LocalDateTime;
 
 /**
- * 测试记录通用汇总字段。
- * 用于复用“结果摘要、分页项、详情头部”的公共信息。
+ * Base fields shared by test record summary objects.
  */
 @Data
 public class BaseRecordSummaryVO {
 
-    @Schema(description = "记录ID", example = "101")
+    @Schema(description = "Record ID", example = "101")
     private Long recordId;
 
-    @Schema(description = "试卷ID", example = "1")
+    @Schema(description = "Paper ID", example = "1")
     private Long paperId;
 
-    @Schema(description = "总分", example = "85")
+    @Schema(description = "Total score", example = "85")
     private Integer totalScore;
 
-    @Schema(description = "答对题数", example = "17")
+    @Schema(description = "Correct count", example = "17")
     private Integer correctCount;
 
-    @Schema(description = "等级结果", example = "高级")
+    @Schema(description = "Level result", example = "Advanced")
     private String levelResult;
 
-    @Schema(description = "开始时间")
+    @Schema(description = "Start time")
     private LocalDateTime startTime;
 
-    @Schema(description = "提交时间")
+    @Schema(description = "Submit time")
     private LocalDateTime submitTime;
 
-    @Schema(description = "作答耗时（秒）", example = "620")
+    @Schema(description = "Duration in seconds", example = "620")
     private Integer durationSeconds;
 }
-

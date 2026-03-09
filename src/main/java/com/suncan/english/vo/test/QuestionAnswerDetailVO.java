@@ -6,34 +6,33 @@ import lombok.Data;
 import java.util.List;
 
 /**
- * 测试详情中的单题作答明细。
- * 继承题目公共字段，再补充“用户答案、标准答案、得分”等详情字段。
+ * Per-question answer detail in record detail API.
  */
 @Data
-@Schema(description = "单题作答明细")
+@Schema(description = "Per-question answer detail")
 public class QuestionAnswerDetailVO extends BaseQuestionVO {
 
-    @Schema(description = "用户客观题答案", example = "A")
+    @Schema(description = "User choice/text answer", example = "A")
     private String userAnswer;
 
-    @Schema(description = "用户主观题文本答案")
+    @Schema(description = "User text answer for subjective question")
     private String answerText;
 
-    @Schema(description = "用户语音答案地址")
+    @Schema(description = "User audio answer URL")
     private String audioAnswerUrl;
 
-    @Schema(description = "是否正确：1正确 0错误", example = "1")
+    @Schema(description = "Is correct: 1-yes, 0-no", example = "1")
     private Integer isCorrect;
 
-    @Schema(description = "本题得分", example = "5")
+    @Schema(description = "Score for this question", example = "5")
     private Integer score;
 
-    @Schema(description = "标准答案")
+    @Schema(description = "Standard answer")
     private String standardAnswer;
 
-    @Schema(description = "解析")
+    @Schema(description = "Analysis")
     private String analysis;
 
-    @Schema(description = "选项列表")
+    @Schema(description = "Options")
     private List<QuestionOptionVO> optionList;
 }
