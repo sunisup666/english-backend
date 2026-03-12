@@ -76,7 +76,7 @@ public class TestServiceImpl implements TestService {
     public List<QuestionVO> getQuestions(Long paperId) {
         validatePaper(paperId);
 
-        List<PaperQuestion> paperQuestionList = loadPaperQuestionRelationsWithCompat(paperId);
+        List<PaperQuestion> paperQuestionList = loadPaperQuestionRelations(paperId);
         List<Question> questionList = loadOrderedActiveQuestionsByRelations(paperQuestionList);
         if (questionList.isEmpty()) {
             throw new BusinessException("No questions in this paper");
@@ -113,10 +113,11 @@ public class TestServiceImpl implements TestService {
             vo.setContent(question.getContent());
             vo.setAudioUrl(question.getAudioUrl());
             vo.setScore(relation != null && relation.getScore() != null ? relation.getScore() : question.getScore());
+            // difficulty 统一为数据库数字编码后，展示层直接使用 code -> name 映射。
+            // 不再保留 easy/medium/hard 兼容逻辑，避免新旧口径并存导致联调混乱。
             vo.setDifficulty(question.getDifficulty());
-            QuestionDifficultyEnum difficultyEnum = QuestionDifficultyEnum.fromRaw(question.getDifficulty());
-            vo.setDifficultyCode(difficultyEnum == null ? null : difficultyEnum.getCode());
-            vo.setDifficultyName(QuestionDifficultyEnum.getNameByRaw(question.getDifficulty()));
+            vo.setDifficultyCode(question.getDifficulty());
+            vo.setDifficultyName(QuestionDifficultyEnum.getNameByCode(question.getDifficulty()));
             vo.setSortOrder(relation != null && relation.getSortOrder() != null ? relation.getSortOrder() : question.getSortOrder());
             if (isChoiceQuestion(question.getQuestionType())) {
                 vo.setOptions(toOptionVOList(optionMap.getOrDefault(question.getId(), Collections.emptyList())));
@@ -134,7 +135,7 @@ public class TestServiceImpl implements TestService {
         Long paperId = dto.getPaperId();
         validatePaper(paperId);
 
-        List<PaperQuestion> paperQuestionList = loadPaperQuestionRelationsWithCompat(paperId);
+        List<PaperQuestion> paperQuestionList = loadPaperQuestionRelations(paperId);
         List<Question> questionList = loadOrderedActiveQuestionsByRelations(paperQuestionList);
         if (questionList.isEmpty()) {
             throw new BusinessException("No questions in this paper");
@@ -285,7 +286,7 @@ public class TestServiceImpl implements TestService {
 
         TestPaper paper = testPaperMapper.selectById(record.getPaperId());
 
-        List<PaperQuestion> paperQuestionList = loadPaperQuestionRelationsWithCompat(record.getPaperId());
+        List<PaperQuestion> paperQuestionList = loadPaperQuestionRelations(record.getPaperId());
         List<Question> questionList = loadOrderedActiveQuestionsByRelations(paperQuestionList);
         List<Long> questionIds = questionList.stream().map(Question::getId).collect(Collectors.toList());
 
@@ -444,35 +445,20 @@ public class TestServiceImpl implements TestService {
         return result;
     }
 
-    // 兼容说明：优先使用 paper_question 关系表；若为空则回退到 question.paper_id（历史数据兼容）。
-    private List<PaperQuestion> loadPaperQuestionRelationsWithCompat(Long paperId) {
+    /**
+     * 统一的试卷题目关系加载逻辑。
+     *
+     * 说明：
+     * 当前题库与试卷已经解耦，关系只通过 paper_question 中间表维护，
+     * 不再从 question 表读取 paper_id（该字段已删除）。
+     */
+    private List<PaperQuestion> loadPaperQuestionRelations(Long paperId) {
         List<PaperQuestion> relationList = paperQuestionMapper.selectList(
                 new LambdaQueryWrapper<PaperQuestion>()
                         .eq(PaperQuestion::getPaperId, paperId)
                         .orderByAsc(PaperQuestion::getSortOrder, PaperQuestion::getId)
         );
-        if (!relationList.isEmpty()) {
-            return relationList;
-        }
-
-        List<Question> legacyQuestions = questionMapper.selectList(
-                new LambdaQueryWrapper<Question>()
-                        .eq(Question::getPaperId, paperId)
-                        .eq(Question::getStatus, 1)
-                        .orderByAsc(Question::getSortOrder, Question::getId)
-                        .select(Question::getId, Question::getScore, Question::getSortOrder)
-        );
-
-        List<PaperQuestion> legacyRelations = new ArrayList<>();
-        for (Question question : legacyQuestions) {
-            PaperQuestion paperQuestion = new PaperQuestion();
-            paperQuestion.setPaperId(paperId);
-            paperQuestion.setQuestionId(question.getId());
-            paperQuestion.setScore(question.getScore());
-            paperQuestion.setSortOrder(question.getSortOrder());
-            legacyRelations.add(paperQuestion);
-        }
-        return legacyRelations;
+        return relationList;
     }
 
     private List<Question> loadOrderedActiveQuestionsByRelations(List<PaperQuestion> paperQuestionList) {

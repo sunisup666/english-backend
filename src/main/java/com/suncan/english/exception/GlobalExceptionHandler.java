@@ -15,11 +15,13 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(BusinessException.class)
     public Result<Void> handleBusinessException(BusinessException e) {
+        e.printStackTrace();
         return Result.fail(e.getMessage());
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public Result<Void> handleMethodArgumentNotValidException(MethodArgumentNotValidException e) {
+        e.printStackTrace();
         String message = e.getBindingResult().getFieldError() != null
                 ? e.getBindingResult().getFieldError().getDefaultMessage()
                 : "validation failed";
@@ -28,6 +30,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(BindException.class)
     public Result<Void> handleBindException(BindException e) {
+        e.printStackTrace();
         String message = e.getBindingResult().getFieldError() != null
                 ? e.getBindingResult().getFieldError().getDefaultMessage()
                 : "bind failed";
@@ -36,11 +39,13 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(ConstraintViolationException.class)
     public Result<Void> handleConstraintViolationException(ConstraintViolationException e) {
+        e.printStackTrace();
         return Result.fail(e.getMessage());
     }
 
     @ExceptionHandler(Exception.class)
     public Result<Void> handleException(Exception e) {
+        e.printStackTrace();
         return Result.fail("系统繁忙，请稍后重试");
     }
 }

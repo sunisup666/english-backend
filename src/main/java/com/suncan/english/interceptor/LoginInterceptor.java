@@ -38,10 +38,10 @@ public class LoginInterceptor implements HandlerInterceptor {
             throw new BusinessException("请先登录");
         }
 
-        // 兼容 Authorization: Bearer xxx
-        if (token.startsWith("Bearer ")) {
-            token = token.substring(7);
-        }
+//        // 兼容 Authorization: Bearer xxx
+//        if (token.startsWith("Bearer ")) {
+//            token = token.substring(7);
+//        }
 
         Long userId = tokenUtil.parseUserId(token);
         UserContext.setUserId(userId);

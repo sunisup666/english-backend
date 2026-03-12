@@ -10,6 +10,11 @@ import java.time.LocalDateTime;
 
 /**
  * 题目实体，对应 question 表。
+ *
+ * 说明：
+ * 1. question 表已不再直接绑定试卷，不再维护 paper_id；
+ * 2. 试卷与题目关系统一由 paper_question 中间表维护；
+ * 3. difficulty 使用数字编码：1简单、2中等、3困难。
  */
 @Data
 @TableName("question")
@@ -17,9 +22,6 @@ public class Question {
 
     @TableId(value = "id", type = IdType.AUTO)
     private Long id;
-
-    @TableField("paper_id")
-    private Long paperId;
 
     @TableField("question_type")
     private Integer questionType;
@@ -43,7 +45,7 @@ public class Question {
     private Integer score;
 
     @TableField("difficulty")
-    private String difficulty;
+    private Integer difficulty;
 
     @TableField("sort_order")
     private Integer sortOrder;

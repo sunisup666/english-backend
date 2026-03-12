@@ -32,19 +32,20 @@ public class StudyTask {
     private String taskContent;
 
     /**
-     * 任务类型：1词汇 2语法 3听力 4口语 5阅读
+     * 任务类型：1词汇 2语法 3听力 4口语。
+     * 当前阶段已删除阅读任务分支，保持与题库题型一致。
      */
     @TableField("task_type")
     private Integer taskType;
 
     /**
-     * 对应题型，便于后续扩展做题入口映射（可为空）。
+     * 对应题型编码。
      */
     @TableField("question_type")
     private Integer questionType;
 
     /**
-     * 场景类型：复用现有场景常量（通用/旅游/考试/商务）。
+     * 场景类型：复用场景枚举（通用/旅游/考试/商务）。
      */
     @TableField("scene_type")
     private Integer sceneType;
@@ -56,7 +57,7 @@ public class StudyTask {
     private Integer taskOrder;
 
     /**
-     * 任务状态：0未完成 1已完成
+     * 任务状态：0未完成 1已完成。
      */
     @TableField("status")
     private Integer status;

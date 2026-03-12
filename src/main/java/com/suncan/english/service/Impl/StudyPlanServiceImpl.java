@@ -1,7 +1,9 @@
 package com.suncan.english.service.Impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.suncan.english.dto.plan.GenerateStudyPlanDTO;
+import com.suncan.english.dto.plan.StudyTaskQueryDTO;
 import com.suncan.english.dto.plan.UpdateStudyTaskStatusDTO;
 import com.suncan.english.entity.StudyPlan;
 import com.suncan.english.entity.StudyTask;
@@ -19,6 +21,7 @@ import com.suncan.english.mapper.StudyTaskMapper;
 import com.suncan.english.mapper.UserMapper;
 import com.suncan.english.service.StudyPlanService;
 import com.suncan.english.vo.plan.StudyPlanVO;
+import com.suncan.english.vo.plan.StudyTaskPageVO;
 import com.suncan.english.vo.plan.StudyTaskVO;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,14 +36,17 @@ import java.util.List;
  * 学习计划业务实现（规则生成版）。
  *
  * 设计说明：
- * 1. 数据库仍存 Integer 编码，便于查询、统计、扩展；
- * 2. Java 业务层用枚举承载语义，避免魔法值散落；
- * 3. VO 同时返回 code + name，前端展示和联调更高效。
+ * 1. 计划和任务仍按 Integer 编码落库，保证 SQL 查询和统计稳定。
+ * 2. 业务层通过枚举表达语义，避免魔法值散落。
+ * 3. 本次整理后，任务类型仅保留与题库一致的 4 类：词汇/语法/听力/口语。
  */
 @Service
 public class StudyPlanServiceImpl implements StudyPlanService {
 
     private static final int PLAN_DAYS = 7;
+    private static final long DEFAULT_CURRENT = 1L;
+    private static final long DEFAULT_SIZE = 10L;
+    private static final long MAX_SIZE = 50L;
 
     private final StudyPlanMapper studyPlanMapper;
     private final StudyTaskMapper studyTaskMapper;
@@ -54,6 +60,9 @@ public class StudyPlanServiceImpl implements StudyPlanService {
         this.userMapper = userMapper;
     }
 
+    /**
+     * 生成学习计划与初始任务。
+     */
     @Override
     @Transactional(rollbackFor = Exception.class)
     public StudyPlanVO generateStudyPlan(Long userId, GenerateStudyPlanDTO dto) {
@@ -64,7 +73,7 @@ public class StudyPlanServiceImpl implements StudyPlanService {
             throw new BusinessException("用户不存在");
         }
 
-        // 计划生成时记录“当前等级快照”，后续可追溯计划依据。
+        // 计划生成时记录“当前等级快照”，保证后续回溯计划依据时有据可查。
         Integer currentLevel = normalizeLevel(user.getEnglishLevel());
         LocalDate startDate = dto.getStartDate() == null ? LocalDate.now() : dto.getStartDate();
         LocalDate endDate = startDate.plusDays(PLAN_DAYS - 1);
@@ -81,7 +90,7 @@ public class StudyPlanServiceImpl implements StudyPlanService {
         plan.setPlanName(buildPlanName(dto.getGoalType(), currentLevel, dto.getDailyMinutes()));
         plan.setStartDate(startDate);
         plan.setEndDate(endDate);
-        // 原数字状态改为枚举，code 与数据库保持一致：PLAN_STATUS_RUNNING=1
+        // 原数字状态改为枚举，code 与数据库保持一致：1=进行中。
         plan.setStatus(StudyPlanStatusEnum.RUNNING.getCode());
         plan.setCreateTime(now);
         plan.setUpdateTime(now);
@@ -91,16 +100,18 @@ public class StudyPlanServiceImpl implements StudyPlanService {
         for (StudyTask task : taskList) {
             studyTaskMapper.insert(task);
         }
-
         return toPlanVO(plan);
     }
 
+    /**
+     * 查询当前进行中的学习计划。
+     */
     @Override
     public StudyPlanVO getCurrentPlan(Long userId) {
         StudyPlan currentPlan = studyPlanMapper.selectOne(
                 new LambdaQueryWrapper<StudyPlan>()
                         .eq(StudyPlan::getUserId, userId)
-                        // 原数字状态改为枚举，code 与数据库保持一致：PLAN_STATUS_RUNNING=1
+                        // 原数字状态改为枚举，code 与数据库保持一致：1=进行中。
                         .eq(StudyPlan::getStatus, StudyPlanStatusEnum.RUNNING.getCode())
                         .orderByDesc(StudyPlan::getId)
                         .last("limit 1")
@@ -111,31 +122,78 @@ public class StudyPlanServiceImpl implements StudyPlanService {
         return toPlanVO(currentPlan);
     }
 
+    /**
+     * 分页查询学习任务列表。
+     *
+     * 说明：
+     * 1. 保持原接口路径不变，只升级查询能力，避免新增 today/all/finished 等重复接口；
+     * 2. 通过可选条件实现“同一接口多视图”：传今天日期可看当天任务，不传日期即看全部任务；
+     * 3. 返回分页结构更适合历史任务场景，数据量增长后也更稳定。
+     */
     @Override
-    public List<StudyTaskVO> listPlanTasks(Long userId, Long planId) {
-        StudyPlan plan = requireOwnedPlan(userId, planId);
+    public StudyTaskPageVO listPlanTasks(Long userId, StudyTaskQueryDTO queryDTO) {
+        // 统一在 service 层做参数校验与兜底，便于 controller、其他调用方复用同一套规则。
+        validateTaskListQuery(queryDTO);
 
-        List<StudyTask> taskList = studyTaskMapper.selectList(
-                new LambdaQueryWrapper<StudyTask>()
-                        .eq(StudyTask::getPlanId, plan.getId())
-                        .orderByAsc(StudyTask::getTaskDate, StudyTask::getTaskOrder, StudyTask::getId)
-        );
-        if (taskList.isEmpty()) {
-            return Collections.emptyList();
+        // 先做计划归属校验，避免越权读取他人任务。
+        StudyPlan plan = requireOwnedPlan(userId, queryDTO.getPlanId());
+
+        // current/size 在 service 层统一归一化，防止前端传入异常分页值导致查询行为不可控。
+        long current = normalizeCurrent(queryDTO.getCurrent());
+        long size = normalizeSize(queryDTO.getSize());
+        long offset = (current - 1L) * size;
+
+        // 构建通用查询条件：计划ID必传，日期/状态/类型按可选参数动态拼接。
+        LambdaQueryWrapper<StudyTask> queryWrapper = buildTaskListWrapper(plan.getId(), queryDTO, false);
+
+        // 先查总数，再查分页数据，便于前端分页控件展示总页数和总条数。
+        Long totalValue = studyTaskMapper.selectCount(queryWrapper);
+        long total = totalValue == null ? 0L : totalValue;
+
+        List<StudyTaskVO> records = new ArrayList<>();
+        if (total > 0) {
+            // 查询当前页数据时保持稳定排序，避免前端翻页或刷新后顺序跳动。
+            LambdaQueryWrapper<StudyTask> pageWrapper = buildTaskListWrapper(plan.getId(), queryDTO, true)
+                    .last("limit " + offset + "," + size);
+            List<StudyTask> taskList = studyTaskMapper.selectList(pageWrapper);
+
+            // records 仍沿用原有 StudyTaskVO，并补齐任务类型/题型/场景中文名称。
+            for (StudyTask task : taskList) {
+                records.add(toTaskVO(task));
+            }
         }
 
-        List<StudyTaskVO> result = new ArrayList<>();
-        for (StudyTask task : taskList) {
-            result.add(toTaskVO(task));
-        }
-        return result;
+        StudyTaskPageVO pageVO = new StudyTaskPageVO();
+        pageVO.setCurrent(current);
+        pageVO.setSize(size);
+        pageVO.setTotal(total);
+        pageVO.setRecords(records);
+        return pageVO;
     }
 
+    /**
+     * 查询单个学习任务详情（仅任务元数据）。
+     *
+     * 说明：
+     * 1. 这里必须做任务归属校验，避免用户越权查看他人的任务信息；
+     * 2. 该接口只负责返回任务元数据，不加载练习题目；
+     * 3. 练习题目由 Practice 模块按规则动态生成，职责分离后更利于维护与前端联调。
+     */
+    @Override
+    public StudyTaskVO taskDetail(Long userId, Long taskId) {
+        StudyTask task = requireOwnedTask(userId, taskId);
+        return toTaskVO(task);
+    }
+
+    /**
+     * 更新任务完成状态。
+     */
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void updateTaskStatus(Long userId, UpdateStudyTaskStatusDTO dto) {
-        // 原数字状态改为枚举，code 与数据库保持一致：TASK_STATUS_TODO=0，TASK_STATUS_DONE=1
-        if (dto.getStatus() == null || (!dto.getStatus().equals(StudyTaskStatusEnum.TODO.getCode())
+        // 原数字状态改为枚举，code 与数据库保持一致：0=待完成，1=已完成。
+        if (dto.getStatus() == null
+                || (!dto.getStatus().equals(StudyTaskStatusEnum.TODO.getCode())
                 && !dto.getStatus().equals(StudyTaskStatusEnum.DONE.getCode()))) {
             throw new BusinessException("任务状态仅支持 0(未完成) 或 1(已完成)");
         }
@@ -144,12 +202,11 @@ public class StudyPlanServiceImpl implements StudyPlanService {
         if (task == null) {
             throw new BusinessException("任务不存在");
         }
-
         requireOwnedPlan(userId, task.getPlanId());
 
         studyTaskMapper.update(
                 null,
-                new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<StudyTask>()
+                new LambdaUpdateWrapper<StudyTask>()
                         .eq(StudyTask::getId, task.getId())
                         .set(StudyTask::getStatus, dto.getStatus())
                         .set(StudyTask::getUpdateTime, LocalDateTime.now())
@@ -160,15 +217,15 @@ public class StudyPlanServiceImpl implements StudyPlanService {
         List<StudyPlan> runningPlans = studyPlanMapper.selectList(
                 new LambdaQueryWrapper<StudyPlan>()
                         .eq(StudyPlan::getUserId, userId)
-                        // 原数字状态改为枚举，code 与数据库保持一致：PLAN_STATUS_RUNNING=1
+                        // 原数字状态改为枚举，code 与数据库保持一致：1=进行中。
                         .eq(StudyPlan::getStatus, StudyPlanStatusEnum.RUNNING.getCode())
         );
         for (StudyPlan runningPlan : runningPlans) {
             studyPlanMapper.update(
                     null,
-                    new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<StudyPlan>()
+                    new LambdaUpdateWrapper<StudyPlan>()
                             .eq(StudyPlan::getId, runningPlan.getId())
-                            // 原数字状态改为枚举，code 与数据库保持一致：PLAN_STATUS_FINISHED=2
+                            // 原数字状态改为枚举，code 与数据库保持一致：2=已完成。
                             .set(StudyPlan::getStatus, StudyPlanStatusEnum.FINISHED.getCode())
                             .set(StudyPlan::getUpdateTime, now)
             );
@@ -178,8 +235,8 @@ public class StudyPlanServiceImpl implements StudyPlanService {
     /**
      * 任务拆分规则：
      * 1. 固定 7 天；
-     * 2. 每日任务条数由时长决定；
-     * 3. 每日总时长均分到各任务；
+     * 2. 每日任务条数由学习时长决定；
+     * 3. 每日总时长按任务数均分；
      * 4. 任务类型按目标序列循环分配。
      */
     private List<StudyTask> buildPlanTasks(StudyPlan plan, Integer level, LocalDateTime now) {
@@ -192,7 +249,6 @@ public class StudyPlanServiceImpl implements StudyPlanService {
         List<StudyTask> result = new ArrayList<>();
         for (int dayOffset = 0; dayOffset < PLAN_DAYS; dayOffset++) {
             LocalDate taskDate = plan.getStartDate().plusDays(dayOffset);
-
             for (int order = 1; order <= tasksPerDay; order++) {
                 TaskTypeEnum taskType = taskTypeSequence.get(sequenceIndex % taskTypeSequence.size());
                 sequenceIndex++;
@@ -205,7 +261,7 @@ public class StudyPlanServiceImpl implements StudyPlanService {
                 task.setSceneType(resolveSceneType(plan.getGoalType()));
                 task.setDurationMinutes(durationParts[order - 1]);
                 task.setTaskOrder(order);
-                // 原数字状态改为枚举，code 与数据库保持一致：TASK_STATUS_TODO=0
+                // 原数字状态改为枚举，code 与数据库保持一致：0=待完成。
                 task.setStatus(StudyTaskStatusEnum.TODO.getCode());
                 task.setTaskTitle(buildTaskTitle(taskType, plan.getGoalType()));
                 task.setTaskContent(buildTaskContent(taskType, plan.getGoalType(), level, durationParts[order - 1]));
@@ -223,6 +279,10 @@ public class StudyPlanServiceImpl implements StudyPlanService {
             throw new BusinessException("goalType only supports 1/2/3");
         }
 
+        // 为什么删除阅读任务分支：
+        // 1. 当前题库 question_type 只有 1~4（词汇/语法/听力/口语），没有阅读题型。
+        // 2. 任务类型必须与题库题型一致，否则会出现“任务能生成但无法正常出题/提交”的断链。
+        // 3. 若后续新增阅读题型，再恢复阅读任务分支更合理，能保证上线即闭环。
         List<TaskTypeEnum> sequence = new ArrayList<>();
         if (goalType == GoalTypeEnum.TRAVEL) {
             Collections.addAll(sequence,
@@ -230,34 +290,111 @@ public class StudyPlanServiceImpl implements StudyPlanService {
                     TaskTypeEnum.LISTENING,
                     TaskTypeEnum.SPEAKING,
                     TaskTypeEnum.VOCABULARY,
-                    TaskTypeEnum.READING,
                     TaskTypeEnum.LISTENING,
                     TaskTypeEnum.SPEAKING,
-                    TaskTypeEnum.GRAMMAR);
+                    TaskTypeEnum.GRAMMAR,
+                    TaskTypeEnum.VOCABULARY);
             return sequence;
         }
         if (goalType == GoalTypeEnum.EXAM) {
             Collections.addAll(sequence,
                     TaskTypeEnum.VOCABULARY,
                     TaskTypeEnum.GRAMMAR,
-                    TaskTypeEnum.READING,
                     TaskTypeEnum.LISTENING,
                     TaskTypeEnum.GRAMMAR,
                     TaskTypeEnum.VOCABULARY,
-                    TaskTypeEnum.READING,
-                    TaskTypeEnum.LISTENING);
+                    TaskTypeEnum.LISTENING,
+                    TaskTypeEnum.GRAMMAR,
+                    TaskTypeEnum.VOCABULARY);
             return sequence;
         }
         Collections.addAll(sequence,
                 TaskTypeEnum.VOCABULARY,
                 TaskTypeEnum.SPEAKING,
-                TaskTypeEnum.READING,
                 TaskTypeEnum.LISTENING,
                 TaskTypeEnum.SPEAKING,
                 TaskTypeEnum.GRAMMAR,
-                TaskTypeEnum.READING,
-                TaskTypeEnum.VOCABULARY);
+                TaskTypeEnum.VOCABULARY,
+                TaskTypeEnum.LISTENING,
+                TaskTypeEnum.SPEAKING);
         return sequence;
+    }
+
+    /**
+     * 校验任务列表查询参数。
+     *
+     * 说明：
+     * 1. 将基础校验放在 service 层，能保证 controller、定时任务或其他调用入口都复用同一规则；
+     * 2. planId 是归属校验与查询主条件，必须有值；
+     * 3. status/taskType 属于可选筛选，传了就校验合法值，避免无效参数造成脏查询。
+     */
+    private void validateTaskListQuery(StudyTaskQueryDTO queryDTO) {
+        if (queryDTO == null || queryDTO.getPlanId() == null) {
+            throw new BusinessException("planId cannot be null");
+        }
+
+        if (queryDTO.getStatus() != null && !isValidTaskStatus(queryDTO.getStatus())) {
+            throw new BusinessException("status only supports 0/1");
+        }
+
+        if (queryDTO.getTaskType() != null && TaskTypeEnum.fromCode(queryDTO.getTaskType()) == null) {
+            throw new BusinessException("taskType only supports 1/2/3/4");
+        }
+    }
+
+    /**
+     * 归一化当前页参数：小于 1 时按 1 处理。
+     */
+    private long normalizeCurrent(Long current) {
+        if (current == null || current < 1L) {
+            return DEFAULT_CURRENT;
+        }
+        return current;
+    }
+
+    /**
+     * 归一化每页条数参数：小于 1 按 10，超过 50 按 50。
+     */
+    private long normalizeSize(Long size) {
+        if (size == null || size < 1L) {
+            return DEFAULT_SIZE;
+        }
+        return Math.min(size, MAX_SIZE);
+    }
+
+    /**
+     * 构建任务列表查询条件。
+     *
+     * 说明：
+     * 1. taskDate/status/taskType 都是可选条件，按“有值才拼接”实现灵活筛选；
+     * 2. 排序统一使用 task_date asc、task_order asc、id asc，保证分页前后顺序稳定；
+     * 3. 稳定排序可以避免前端刷新、翻页时同一批数据顺序跳动。
+     */
+    private LambdaQueryWrapper<StudyTask> buildTaskListWrapper(Long planId, StudyTaskQueryDTO queryDTO, boolean withOrder) {
+        LambdaQueryWrapper<StudyTask> wrapper = new LambdaQueryWrapper<StudyTask>()
+                .eq(StudyTask::getPlanId, planId);
+
+        if (queryDTO.getTaskDate() != null) {
+            wrapper.eq(StudyTask::getTaskDate, queryDTO.getTaskDate());
+        }
+        if (queryDTO.getStatus() != null) {
+            wrapper.eq(StudyTask::getStatus, queryDTO.getStatus());
+        }
+        if (queryDTO.getTaskType() != null) {
+            wrapper.eq(StudyTask::getTaskType, queryDTO.getTaskType());
+        }
+        if (withOrder) {
+            wrapper.orderByAsc(StudyTask::getTaskDate, StudyTask::getTaskOrder, StudyTask::getId);
+        }
+        return wrapper;
+    }
+
+    /**
+     * 校验任务状态是否合法。
+     */
+    private boolean isValidTaskStatus(Integer status) {
+        return StudyTaskStatusEnum.TODO.getCode().equals(status)
+                || StudyTaskStatusEnum.DONE.getCode().equals(status);
     }
 
     private StudyPlan requireOwnedPlan(Long userId, Long planId) {
@@ -271,6 +408,22 @@ public class StudyPlanServiceImpl implements StudyPlanService {
             throw new BusinessException("学习计划不存在或无权限");
         }
         return plan;
+    }
+
+    /**
+     * 校验任务归属并返回任务实体。
+     *
+     * 说明：
+     * 任务详情是用户私有学习数据，必须先校验 taskId 对应计划是否属于当前用户，
+     * 这样可以从后端根源上防止越权访问。
+     */
+    private StudyTask requireOwnedTask(Long userId, Long taskId) {
+        StudyTask task = studyTaskMapper.selectById(taskId);
+        if (task == null) {
+            throw new BusinessException("学习任务不存在");
+        }
+        requireOwnedPlan(userId, task.getPlanId());
+        return task;
     }
 
     private int resolveTasksPerDay(Integer dailyMinutes) {
@@ -309,8 +462,7 @@ public class StudyPlanServiceImpl implements StudyPlanService {
         if (taskType == TaskTypeEnum.SPEAKING) {
             return QuestionTypeEnum.SPEAKING_SUBJECTIVE.getCode();
         }
-        // 阅读当前无题型映射，先置空。
-        return null;
+        throw new BusinessException("unsupported taskType: " + taskType);
     }
 
     private Integer resolveSceneType(Integer goalTypeCode) {
@@ -337,10 +489,10 @@ public class StudyPlanServiceImpl implements StudyPlanService {
     }
 
     /**
-     * 文案说明：
-     * - 难度提示由等级枚举分流；
-     * - 场景提示由目标枚举分流；
-     * - 任务说明由任务类型枚举分流。
+     * 任务文案规则：
+     * 1. 难度提示由等级枚举分流；
+     * 2. 场景提示由目标枚举分流；
+     * 3. 任务说明由任务类型枚举分流（仅 4 类）。
      */
     private String buildTaskContent(TaskTypeEnum taskType, Integer goalTypeCode, Integer levelCode, Integer durationMinutes) {
         String levelHint;
@@ -372,7 +524,7 @@ public class StudyPlanServiceImpl implements StudyPlanService {
         } else if (taskType == TaskTypeEnum.SPEAKING) {
             taskHint = "完成口语跟读与场景表达练习";
         } else {
-            taskHint = "完成短文阅读并提炼主旨与细节";
+            throw new BusinessException("unsupported taskType: " + taskType);
         }
 
         return "建议学习" + durationMinutes + "分钟；" + goalHint + "；" + levelHint + "；本次任务：" + taskHint + "。";
@@ -393,9 +545,6 @@ public class StudyPlanServiceImpl implements StudyPlanService {
         return EnglishLevelEnum.containsCode(level) ? level : EnglishLevelEnum.BEGINNER.getCode();
     }
 
-    /**
-     * VO 组装统一通过枚举转换名称，避免在多个地方重复 if/else。
-     */
     private StudyPlanVO toPlanVO(StudyPlan plan) {
         StudyPlanVO vo = new StudyPlanVO();
         vo.setId(plan.getId());
@@ -418,16 +567,12 @@ public class StudyPlanServiceImpl implements StudyPlanService {
         vo.setTaskDate(task.getTaskDate());
         vo.setTaskTitle(task.getTaskTitle());
         vo.setTaskContent(task.getTaskContent());
-
         vo.setTaskType(task.getTaskType());
         vo.setTaskTypeName(TaskTypeEnum.getNameByCode(task.getTaskType()));
-
         vo.setQuestionType(task.getQuestionType());
         vo.setQuestionTypeName(QuestionTypeEnum.getNameByCode(task.getQuestionType()));
-
         vo.setSceneType(task.getSceneType());
         vo.setSceneTypeName(SceneTypeEnum.getNameByCode(task.getSceneType()));
-
         vo.setDurationMinutes(task.getDurationMinutes());
         vo.setTaskOrder(task.getTaskOrder());
         vo.setStatus(task.getStatus());

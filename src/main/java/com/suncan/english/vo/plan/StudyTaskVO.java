@@ -7,10 +7,6 @@ import java.time.LocalDate;
 
 /**
  * 学习任务返回对象。
- *
- * 说明：
- * - 任务、题型、场景都同时返回编码与中文名；
- * - 前端既能直接展示，也能基于编码做筛选或跳转。
  */
 @Data
 @Schema(description = "学习任务信息")
@@ -31,16 +27,16 @@ public class StudyTaskVO {
     @Schema(description = "任务内容")
     private String taskContent;
 
-    @Schema(description = "任务类型编码：1词汇 2语法 3听力 4口语 5阅读", example = "1")
+    @Schema(description = "任务类型编码：1词汇 2语法 3听力 4口语", example = "1")
     private Integer taskType;
 
     @Schema(description = "任务类型名称", example = "词汇")
     private String taskTypeName;
 
-    @Schema(description = "题型映射编码（可为空）", example = "1")
+    @Schema(description = "题型映射编码", example = "1")
     private Integer questionType;
 
-    @Schema(description = "题型名称（可为空）", example = "词汇单选")
+    @Schema(description = "题型名称", example = "词汇单选")
     private String questionTypeName;
 
     @Schema(description = "场景编码", example = "3")
