@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.suncan.english.module.practice.mapper.UserPracticeRecordMapper">
+
+    <select id="queryWeekCorrectRateTrend" resultType="com.suncan.english.module.progress.vo.TaskTypeWeekCorrectRateVO">
+        SELECT DATE_FORMAT(submit_time, '%x-W%v') AS weekLabel,
+               task_type AS taskType,
+               ROUND(SUM(correct_count) / NULLIF(SUM(total_count), 0), 2) AS correctRate
+        FROM user_practice_record
+        WHERE user_id = #{userId}
+          AND submit_time IS NOT NULL
+          AND submit_time <![CDATA[>=]]> #{startTime}
+          AND submit_time <![CDATA[<]]> #{endTime}
+        GROUP BY DATE_FORMAT(submit_time, '%x-W%v'), task_type
+        ORDER BY weekLabel ASC, taskType ASC
+    </select>
+</mapper>

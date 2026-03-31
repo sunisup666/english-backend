@@ -6,7 +6,8 @@ spring:
     # 本地开发数据库配置
     url: jdbc:mysql://127.0.0.1:3306/english_learning?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai
     username: root
-    password: "52120030823Sk."
+    password: "123456"
+    #    password: "52120030823Sk."
     driver-class-name: com.mysql.cj.jdbc.Driver
 
 token:
@@ -16,9 +17,8 @@ token:
   header: Authorization
 
 mybatis-plus:
-  # Mapper 接口扫描包路径
   mapper-locations: classpath*:/mapper/**/*.xml
-  type-aliases-package: com.suncan.english.entity
+  type-aliases-package: com.suncan.english.module.user.entity,com.suncan.english.module.learning.entity,com.suncan.english.module.questionbank.entity,com.suncan.english.module.practice.entity,com.suncan.english.module.test.entity,com.suncan.english.module.reward.entity,com.suncan.english.entity
   # 显式指定 Mapper 接口扫描包，确保 @Mapper 能被正确注册为 Spring Bean
   configuration:
     # 开启下划线到驼峰映射：english_level -> englishLevel
@@ -36,3 +36,11 @@ knife4j:
   enable: true
   setting:
     language: zh_cn
+
+logging:
+  level:
+    root: info
+    com.suncan.english: debug
+    com.baomidou.mybatisplus: debug
+    org.mybatis: debug
+    org.springframework: info

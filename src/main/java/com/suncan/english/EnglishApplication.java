@@ -8,7 +8,16 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  * Spring Boot 启动类。
  */
 @SpringBootApplication
-@MapperScan("com.suncan.english.mapper")
+@MapperScan({
+        "com.suncan.english.module.user.mapper",
+        "com.suncan.english.module.admin.mapper",
+        "com.suncan.english.module.learning.mapper",
+        "com.suncan.english.module.questionbank.mapper",
+        "com.suncan.english.module.practice.mapper",
+        "com.suncan.english.module.test.mapper",
+        "com.suncan.english.module.reward.mapper",
+        "com.suncan.english.mapper"
+})
 public class EnglishApplication {
     public static void main(String[] args) {
         SpringApplication.run(EnglishApplication.class, args);
